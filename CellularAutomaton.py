@@ -13,7 +13,7 @@ os.environ['CUDA_HOME']      = r'C:\Program Files\NVIDIA GPU Computing Toolkit\C
 #IMG SIZE
 _SHOWSIMULATION = True
 _SIZE = (1080, 1920) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
-_STEPS = 40 #number of steps to simulate
+_STEPS = 400 #number of steps to simulate
 _LOOPPAUSETIME = 1 #pause between each calculations (indirectly fps)
 _SKIPONEFRAME = False #renders 2 frales but only show one (epilepsy brrrrr)
 _SKIPTWOFRAME = False #renders 3 frames but only show one (works only if _SKIPONEFRAME = True)(epilepsy brrrrr)
@@ -45,11 +45,11 @@ RandomIntStartingFrame = False #generates a random image to start with only 1 an
 _LOOP = False
 @cuda.jit
 def ActFunction(x):
-    return -1./pow(2., (0.6*pow(x, 2.)))+1.
     #return -1./pow(2., (0.6*pow(x, 2.)))+1. #worms
     #return -1./(0.9*pow(x, 2.)+1.)+1. #Mitosis
     #return -1./(0.89*pow(x, 2.)+1.)+1. #slime
     #return abs(1.2*x) #waves?
+    return -1./pow(2., (0.6*pow(x, 2.)))+1. #for the weird thing
     #Conway's game of life
     """
     if x == 3. or x == 11. or x == 12. :
@@ -120,6 +120,12 @@ NCA_Filter = np.array([[-0.8300993,  -0.44785473,  0.979766  ],
 NCA_Filter = np.array([ [1 ,    1  ,   1  ],
                         [1   ,  9 ,  1 ],
                         [1,     1  ,  1   ]])
+
+
+#weird looking thing that grows and creates pipe inside itself. also freaky tentacles idk    // use return -1./pow(2., (0.6*pow(x, 2.)))+1. as ActFunction
+NCA_Filter = np.array([[-0.99038735,  0.82367216, -0.99038735],
+                       [ 0.82367216,  0.31695098,  0.82367216],
+                       [-0.99038735,  0.82367216, -0.99038735]])
 """
 
 
@@ -139,9 +145,9 @@ def RandomFilter():
 
 #NCA_Filter = RandomFilter()
 
-NCA_Filter = np.array([[ 0.32592213, -0.84735986,  0.32592213],
- [-0.84735986,  0.6056352,  -0.84735986],
- [ 0.32592213, -0.84735986,  0.32592213]])
+NCA_Filter = np.array([[-0.99038735,  0.82367216, -0.99038735],
+ [ 0.82367216,  0.31695098,  0.82367216],
+ [-0.99038735,  0.82367216, -0.99038735]])
 
 
 
@@ -188,7 +194,7 @@ def GPU_PIXEL(_input, _filter, _output):
     if x <= xSize and y <= ySize:
         for subx in [-1,0,1]:
             for suby in [-1,0,1]:
-                sum += _input[(subx-x)%(xSize-1),(suby-y)%(ySize-1)] * _filter[subx+1,suby+1]
+                sum += _input[(subx+x)%(xSize-1),(suby+y)%(ySize-1)] * _filter[subx+1,suby+1]
         sum = ActFunction(sum)
         if sum <0:
             sum = 0
