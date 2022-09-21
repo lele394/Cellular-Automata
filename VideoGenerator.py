@@ -33,4 +33,4 @@ def MakeVideo(image_folder, video_name, fps):
 
 def SaveImage(frame, folder, name):
     frame2 = cv2.normalize(frame, None, alpha = 0, beta = 255, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_32F)
-    cv2.imwrite(folder+str(name)+".bmp", frame2)
+    cv2.imwrite(folder+str(name)+".jpg", frame2)

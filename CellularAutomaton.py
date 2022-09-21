@@ -8,13 +8,14 @@ import VideoGenerator as vg
 
 import os
 
-os.environ['CUDA_HOME']      = r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7'
+os.environ['CUDA_HOME']      = r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7' #install cuda toolkit from nvidia and put the correct path here (should not really change much tho, except v11.7)
 
 #IMG SIZE
-_SIZE = (900, 1600) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
-_STEPS = 10 #number of steps to simulate
+_SHOWSIMULATION = True
+_SIZE = (1080, 1920) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
+_STEPS = 40 #number of steps to simulate
 _LOOPPAUSETIME = 1 #pause between each calculations (indirectly fps)
-_SKIPONEFRAME = True #renders 2 frales but only show one (epilepsy brrrrr)
+_SKIPONEFRAME = False #renders 2 frales but only show one (epilepsy brrrrr)
 _SKIPTWOFRAME = False #renders 3 frames but only show one (works only if _SKIPONEFRAME = True)(epilepsy brrrrr)
 
 #_COLORSHIFT = [110/255, 220/255, 255/255] #not working
@@ -23,15 +24,16 @@ _SKIPTWOFRAME = False #renders 3 frames but only show one (works only if _SKIPON
 _THREADSPERBLOCK = (6,6)
 _BLOCKSPERGRID = (_SIZE[0] + (36 - 1) , _SIZE[1] + (36 - 1))
 
-#VIDEO GENERATOR
-_GENERATEVIDEO = True
-_TEMPVIDFOLDER = "./temp/"
-_OUTPUT = "test"
-_VIDEOLENGTH = 60  #seconds
+#VIDEO GENERATOR just use to generate iamge or 10gb videos go brrr
+_GENERATEVIDEO = False
+_GENERATEVIDEOFRAMES = True
+_TEMPVIDFOLDER = "temp"
+_OUTPUT = "test.avi"
+_VIDEOLENGTH = 10  #seconds
 _VIDEOFPS = 60
 
 if _GENERATEVIDEO:
-    #_STEPS = _VIDEOLENGTH * _VIDEOFPS
+    _STEPS = _VIDEOLENGTH * _VIDEOFPS
     _LOOPPAUSETIME = 1
 
 
@@ -39,14 +41,15 @@ if _GENERATEVIDEO:
 
 #SIM
 RandomStartingFrame = True #generates a random image to start
-RandomIntStartingFrame = True #generates a random image to start with only 1 and 0
+RandomIntStartingFrame = False #generates a random image to start with only 1 and 0
 _LOOP = False
 @cuda.jit
 def ActFunction(x):
+    return -1./pow(2., (0.6*pow(x, 2.)))+1.
     #return -1./pow(2., (0.6*pow(x, 2.)))+1. #worms
     #return -1./(0.9*pow(x, 2.)+1.)+1. #Mitosis
     #return -1./(0.89*pow(x, 2.)+1.)+1. #slime
-    return abs(1.2*x) #waves?
+    #return abs(1.2*x) #waves?
     #Conway's game of life
     """
     if x == 3. or x == 11. or x == 12. :
@@ -100,7 +103,7 @@ NCA_Filter = np.array([ [0.8 ,    -0.85  ,   0.8  ],
 NCA_Filter = np.array([ [0.019 ,    0.389  ,   -0.647  ],
                         [0.987   ,  -0.988 ,  -0.999 ],
                         [-0.786,     -0.048  ,   -0.847   ]])
-"""
+
 
 #waves?
 NCA_Filter = np.array([ [0.565 ,    -0.716  ,   0.565 ],
@@ -108,7 +111,11 @@ NCA_Filter = np.array([ [0.565 ,    -0.716  ,   0.565 ],
                         [0.565,     -0.716  ,   0.565   ]])
 
 
-"""
+#Super cool growing spaceships, use x*x activ function
+NCA_Filter = np.array([[-0.8300993,  -0.44785473,  0.979766  ],
+                       [-0.47983372,  0.07656833, -0.35514032],
+                       [ 0.53823346,  0.43503127,  0.2492277 ]])
+
 #Conway  game of life
 NCA_Filter = np.array([ [1 ,    1  ,   1  ],
                         [1   ,  9 ,  1 ],
@@ -117,16 +124,24 @@ NCA_Filter = np.array([ [1 ,    1  ,   1  ],
 
 
 def RandomFilter():
+    """#normalFilter
     return np.array([ [rd.uniform(-1, 1) ,    rd.uniform(-1, 1)  ,   rd.uniform(-1, 1)  ],
                       [rd.uniform(-1, 1)   ,  rd.uniform(-1, 1) ,    rd.uniform(-1, 1) ],
                       [rd.uniform(-1, 1),     rd.uniform(-1, 1)  ,   rd.uniform(-1, 1)   ]])
+    """
+    #FullSymetry Filter
+    a = rd.uniform(-1, 1)
+    b = rd.uniform(-1, 1)
+    c = rd.uniform(-1, 1)
+    return np.array([ [a ,    b  ,   a  ],
+                      [b   ,  c ,    b ],
+                      [a,     b  ,   a   ]])
 
 #NCA_Filter = RandomFilter()
 
-
-
-
-
+NCA_Filter = np.array([[ 0.32592213, -0.84735986,  0.32592213],
+ [-0.84735986,  0.6056352,  -0.84735986],
+ [ 0.32592213, -0.84735986,  0.32592213]])
 
 
 
@@ -231,15 +246,15 @@ if __name__ == "__main__":
         if _SKIPONEFRAME: frame = NextStep(frame, NCA_Filter, ActFunction)
         if _SKIPTWOFRAME: frame = NextStep(frame, NCA_Filter, ActFunction)
 
-        if _GENERATEVIDEO:
-            vg.SaveImage(frame, _TEMPVIDFOLDER, i)
+        if _GENERATEVIDEOFRAMES or _GENERATEVIDEO:
+            vg.SaveImage(frame, "./"+_TEMPVIDFOLDER+"/", i)
 
         #threadsperblock = _THREADSPERBLOCK
         #blockspergrid = _BLOCKSPERGRID
         #MakeImage[blockspergrid, threadsperblock](frame, IMG)
 
-        cv2.imshow('image', frame)
-        print("STEP: " , i)
+        if _SHOWSIMULATION: cv2.imshow('image', frame)
+        print("STEP: " , i, "/", _STEPS)
         cv2.waitKey(_LOOPPAUSETIME)
 
 
