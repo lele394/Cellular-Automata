@@ -11,8 +11,8 @@ import os
 os.environ['CUDA_HOME']      = r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7'
 
 #IMG SIZE
-_SIZE = (900, 1600) #size of the output image
-_STEPS = 10000 #number of steps to simulate
+_SIZE = (900, 1600) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
+_STEPS = 10 #number of steps to simulate
 _LOOPPAUSETIME = 1 #pause between each calculations (indirectly fps)
 _SKIPONEFRAME = True #renders 2 frales but only show one (epilepsy brrrrr)
 _SKIPTWOFRAME = False #renders 3 frames but only show one (works only if _SKIPONEFRAME = True)(epilepsy brrrrr)
@@ -24,10 +24,15 @@ _THREADSPERBLOCK = (6,6)
 _BLOCKSPERGRID = (_SIZE[0] + (36 - 1) , _SIZE[1] + (36 - 1))
 
 #VIDEO GENERATOR
-_GENERATEVDEO = True
-_TEMPVIDFOLDER =
-_OUTPUT = "./test"
+_GENERATEVIDEO = True
+_TEMPVIDFOLDER = "./temp/"
+_OUTPUT = "test"
+_VIDEOLENGTH = 60  #seconds
+_VIDEOFPS = 60
 
+if _GENERATEVIDEO:
+    #_STEPS = _VIDEOLENGTH * _VIDEOFPS
+    _LOOPPAUSETIME = 1
 
 
 
@@ -226,6 +231,9 @@ if __name__ == "__main__":
         if _SKIPONEFRAME: frame = NextStep(frame, NCA_Filter, ActFunction)
         if _SKIPTWOFRAME: frame = NextStep(frame, NCA_Filter, ActFunction)
 
+        if _GENERATEVIDEO:
+            vg.SaveImage(frame, _TEMPVIDFOLDER, i)
+
         #threadsperblock = _THREADSPERBLOCK
         #blockspergrid = _BLOCKSPERGRID
         #MakeImage[blockspergrid, threadsperblock](frame, IMG)
@@ -233,6 +241,18 @@ if __name__ == "__main__":
         cv2.imshow('image', frame)
         print("STEP: " , i)
         cv2.waitKey(_LOOPPAUSETIME)
+
+
+    if _GENERATEVIDEO:
+        vg.MakeVideo(_TEMPVIDFOLDER, _OUTPUT, _VIDEOFPS)
+
+
+
+
+
+
+
+
 
     #=========================================================infinite loop test
     c = 0
