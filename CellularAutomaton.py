@@ -1,5 +1,4 @@
 import numpy as np
-import cmath
 from numba import jit, cuda
 from PIL import Image
 import random as rd
@@ -10,12 +9,15 @@ import os
 
 os.environ['CUDA_HOME']      = r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7' #install cuda toolkit from nvidia and put the correct path here (should not really change much tho, except v11.7)
 
+#custom vars
+perc = 30/100 #for custom starting frame 
+
 #IMG SIZE
 _SHOWSIMULATION = True
-_SIZE = (1080, 1920) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
-_STEPS = 400 #number of steps to simulate
+_SIZE = (120, 120) #size of the output image inverse of the resolution you want i.e: 1920x1080 => (1080, 1920)
+_STEPS = 15 #number of steps to simulate
 _LOOPPAUSETIME = 1 #pause between each calculations (indirectly fps)
-_SKIPONEFRAME = False #renders 2 frales but only show one (epilepsy brrrrr)
+_SKIPONEFRAME = True #renders 2 frames but only show one (epilepsy brrrrr)
 _SKIPTWOFRAME = False #renders 3 frames but only show one (works only if _SKIPONEFRAME = True)(epilepsy brrrrr)
 
 #_COLORSHIFT = [110/255, 220/255, 255/255] #not working
@@ -40,23 +42,34 @@ if _GENERATEVIDEO:
 
 
 #SIM
+_CUSTOMFRAME = True #whether or not to use the custom function for starting frame
 RandomStartingFrame = True #generates a random image to start
-RandomIntStartingFrame = False #generates a random image to start with only 1 and 0
+RandomIntStartingFrame = True #generates a random image to start with only 1 and 0
+ZerosStartingFrame = False #blank 0 frame
 _LOOP = False
 @cuda.jit
 def ActFunction(x):
+    #return x*x
     #return -1./pow(2., (0.6*pow(x, 2.)))+1. #worms
     #return -1./(0.9*pow(x, 2.)+1.)+1. #Mitosis
     #return -1./(0.89*pow(x, 2.)+1.)+1. #slime
     #return abs(1.2*x) #waves?
-    return -1./pow(2., (0.6*pow(x, 2.)))+1. #for the weird thing
-    #Conway's game of life
+    #return -1./pow(2., (0.6*pow(x, 2.)))+1. #for the weird thing
     """
+    #Conway's game of life
     if x == 3. or x == 11. or x == 12. :
         return 1
     else:
         return 0
     """
+
+    #cave generator
+    if x>4:
+        return 1
+    else:
+        return 0
+"""
+"""
 #Chose your filter / make a new one
 """
 NCA_Filter = np.array([ [0.1 , -0.1  , 0.3   ],
@@ -102,14 +115,12 @@ NCA_Filter = np.array([ [0.8 ,    -0.85  ,   0.8  ],
 #to use with sin(x)
 NCA_Filter = np.array([ [0.019 ,    0.389  ,   -0.647  ],
                         [0.987   ,  -0.988 ,  -0.999 ],
-                        [-0.786,     -0.048  ,   -0.847   ]])
-
+                        [-0.786,     -0.048  ,   -0.847   ]]
 
 #waves?
 NCA_Filter = np.array([ [0.565 ,    -0.716  ,   0.565 ],
                         [-0.716   ,  0.627 ,  -0.716 ],
                         [0.565,     -0.716  ,   0.565   ]])
-
 
 #Super cool growing spaceships, use x*x activ function
 NCA_Filter = np.array([[-0.8300993,  -0.44785473,  0.979766  ],
@@ -121,12 +132,19 @@ NCA_Filter = np.array([ [1 ,    1  ,   1  ],
                         [1   ,  9 ,  1 ],
                         [1,     1  ,  1   ]])
 
-
 #weird looking thing that grows and creates pipe inside itself. also freaky tentacles idk    // use return -1./pow(2., (0.6*pow(x, 2.)))+1. as ActFunction
 NCA_Filter = np.array([[-0.99038735,  0.82367216, -0.99038735],
                        [ 0.82367216,  0.31695098,  0.82367216],
                        [-0.99038735,  0.82367216, -0.99038735]])
+
 """
+#cave generator
+NCA_Filter = np.array([[1, 1, 1],
+                       [1, 0, 1],
+                       [1, 1, 1]])
+
+
+
 
 
 def RandomFilter():
@@ -142,13 +160,12 @@ def RandomFilter():
     return np.array([ [a ,    b  ,   a  ],
                       [b   ,  c ,    b ],
                       [a,     b  ,   a   ]])
-
+"""
 #NCA_Filter = RandomFilter()
-
-NCA_Filter = np.array([[-0.99038735,  0.82367216, -0.99038735],
- [ 0.82367216,  0.31695098,  0.82367216],
- [-0.99038735,  0.82367216, -0.99038735]])
-
+NCA_Filter = np.array([ [0.2565 ,    -0.2716  ,   0.2565 ],
+                        [-0.2716   ,  0.627 ,  -0.2716 ],
+                        [0.2565,     -0.2716  ,   0.2565   ]])
+"""
 
 
 
@@ -194,7 +211,17 @@ def GPU_PIXEL(_input, _filter, _output):
     if x <= xSize and y <= ySize:
         for subx in [-1,0,1]:
             for suby in [-1,0,1]:
-                sum += _input[(subx+x)%(xSize-1),(suby+y)%(ySize-1)] * _filter[subx+1,suby+1]
+                subbx = subx+x #relative to grid
+                if subbx != -1: subbx = subbx%xSize
+
+                subby = suby+y #relative to grid
+                if subby != -1: subby = subby%ySize
+
+
+
+
+                sum += _input[subbx,subby] * _filter[subx+1,suby+1]
+                #sum += _input[(subx+x)%(xSize),(suby+y)%(ySize)] * _filter[subx+1,suby+1]
         sum = ActFunction(sum)
         if sum <0:
             sum = 0
@@ -240,9 +267,28 @@ if __name__ == "__main__":
     from PIL import Image as im
     size = _SIZE
     frame = np.zeros((size[0], size[1]))
-    frame[int(size[0]/2)][int(size[1]/2)] = 1 #starting grid
+    """
+    #frame[int(size[0]/2)][int(size[1]/2)] = 1 #starting grid
+    #conway drifter
+    frame[int(size[0]/2)][int(size[1]/2)] = 1
+    frame[int(size[0]/2)][int(size[1]/2)-1] = 1
+    frame[int(size[0]/2)-1][int(size[1]/2)] = 1
+    frame[int(size[0]/2)-1][int(size[1]/2)+1] = 1
+    frame[int(size[0]/2)+1][int(size[1]/2)+1] = 1
+
+    """
+
+
     if RandomStartingFrame: frame = np.random.rand(size[0], size[1])
     if RandomIntStartingFrame: frame = np.random.randint(2, size=(size[0], size[1]))
+    if ZerosStartingFrame: frame = np.zeros(shape=(size[0], size[1]))
+
+    if _CUSTOMFRAME:
+        """set your custom frame algo here"""
+        
+        for i in range(int(size[0] * size[1] * perc)):
+            frame[np.random.randint(size[0])][np.random.randint(size[1])] = 1
+    
 
     #IMG = np.zeros((frame.shape[0], frame.shape[1], 3))
     #GPUIMG = cuda.to_device(IMG)
