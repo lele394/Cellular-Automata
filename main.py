@@ -17,7 +17,6 @@ main.py -s STREAMKEYHERE
 
 
 
-#https://317070.github.io/python/
 
 
 
@@ -36,7 +35,12 @@ def MakeFrame(input):
 
 
 
+if __name__ == "__main__":
+    print("Please use CellularAutomaton.py")
 
+
+"""
+#https://317070.github.io/python/
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
@@ -59,7 +63,7 @@ if __name__ == "__main__":
             videostream.send_video_frame(StreamFrame)
 
 
-
+"""
 
 
 
